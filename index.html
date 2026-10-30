@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b1a4a">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zettel">
+<title>Nitro Zettel</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk:#e9e2d4; --desk2:#ddd3c0; --ink:#1f1a2b; --ink2:#5a5368; --line:#b9cbe0;
+  --purple:#2b1a4a; --red:#c0392b; --ok:#2f7d4f;
+  --z-offen:#fff3a6; --z-erledigt:#cdeccf; --z-abgerechnet:#d9dcf6; --z-entwurf:#ffd8c2;
+  --paper:#fffdf6; --shadow:0 1px 1px rgba(0,0,0,.08),0 6px 14px rgba(40,30,10,.18);
+  --hand:'Caveat',cursive; --pen:'Kalam',cursive;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--pen); color:var(--ink); min-height:100vh;
+  background:var(--desk);
+  background-image:radial-gradient(rgba(120,95,60,.10) 1px,transparent 1.2px),radial-gradient(rgba(120,95,60,.07) 1px,transparent 1.2px);
+  background-size:22px 22px,13px 13px; background-position:0 0,7px 9px;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+
+/* Kopf */
+header{position:sticky;top:0;z-index:20;background:var(--purple);color:#fff;
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.top{display:flex;align-items:center;gap:10px;max-width:980px;margin:0 auto}
+.brand{font-family:var(--hand);font-size:34px;font-weight:700;line-height:1;letter-spacing:.5px}
+.brand small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:4px;color:#ff8f82;font-weight:700;margin-top:2px}
+.spacer{flex:1}
+.sync{font-family:var(--sans);font-size:12px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);
+  border:0;color:#fff;padding:7px 10px;border-radius:20px}
+.dot{width:9px;height:9px;border-radius:50%;background:#aaa}
+.dot.ok{background:#5fd18b}.dot.busy{background:#ffd34d;animation:pulse 1s infinite}.dot.err{background:#ff6b5e}.dot.off{background:#aaa}
+@keyframes pulse{50%{opacity:.35}}
+.iconbtn{background:none;border:0;color:#fff;padding:6px;border-radius:8px;display:grid;place-items:center}
+.iconbtn svg{width:24px;height:24px}
+
+.tools{max-width:980px;margin:10px auto 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.tab{font-family:var(--sans);font-size:13px;border:0;border-radius:18px;padding:7px 12px;background:rgba(255,255,255,.12);color:#fff;white-space:nowrap}
+.tab[aria-pressed=true]{background:#fff;color:var(--purple);font-weight:700}
+.tab b{font-weight:700;opacity:.7;margin-left:3px}
+.search{flex:1;min-width:150px;font-family:var(--sans);font-size:15px;border:0;border-radius:18px;padding:8px 14px;background:rgba(255,255,255,.95);color:var(--ink)}
+
+/* Pinnwand */
+main{max-width:980px;margin:0 auto;padding:22px 16px}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px 20px}
+.zettel{position:relative;text-align:left;border:0;padding:26px 18px 16px;min-height:190px;background:var(--z-offen);
+  box-shadow:var(--shadow);transform:rotate(var(--rot,0deg));transition:transform .15s ease;
+  background-image:linear-gradient(transparent 27px,rgba(0,0,0,.06) 28px);background-size:100% 28px;background-position:0 18px}
+.zettel:hover{transform:rotate(0) translateY(-2px)}
+.zettel.erledigt{background-color:var(--z-erledigt)}.zettel.abgerechnet{background-color:var(--z-abgerechnet)}.zettel.entwurf{background-color:var(--z-entwurf)}
+.zettel::before{content:"";position:absolute;top:-10px;left:50%;width:84px;height:24px;transform:translateX(-50%) rotate(-3deg);
+  background:rgba(255,255,255,.55);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.z-date{font-family:var(--hand);font-size:26px;font-weight:700;color:var(--purple);line-height:1}
+.z-date span{font-size:19px;color:var(--ink2);font-weight:500}
+.z-kunde{font-size:20px;font-weight:700;margin:6px 0 2px;line-height:1.2}
+.z-ort{font-size:16px;color:var(--ink2)}
+.z-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;font-family:var(--sans);font-size:12px}
+.chip{background:rgba(255,255,255,.65);border-radius:12px;padding:3px 8px;border:1px solid rgba(0,0,0,.08)}
+.chip.warn{background:#fff;color:var(--red);border-color:rgba(192,57,43,.35);font-weight:700}
+.chip.re{background:var(--purple);color:#fff;border-color:transparent}
+.stamp{position:absolute;right:10px;bottom:10px;font-family:var(--sans);font-size:10px;font-weight:800;letter-spacing:1.5px;
+  color:var(--red);border:2px solid var(--red);border-radius:4px;padding:2px 6px;transform:rotate(-8deg);opacity:.75}
+.stamp.green{color:var(--ok);border-color:var(--ok)}
+.empty{grid-column:1/-1;text-align:center;font-family:var(--hand);font-size:30px;color:var(--ink2);padding:50px 10px}
+.monthhead{grid-column:1/-1;font-family:var(--hand);font-size:30px;color:var(--purple);margin:6px 0 -10px;border-bottom:2px dashed rgba(43,26,74,.25)}
+
+.fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;border:0;border-radius:30px;
+  background:var(--red);color:#fff;font-family:var(--hand);font-size:28px;font-weight:700;padding:10px 22px 10px 18px;
+  box-shadow:0 6px 18px rgba(192,57,43,.45);display:flex;align-items:center;gap:8px}
+.fab svg{width:24px;height:24px}
+
+/* Blatt (Editor) */
+.sheetwrap{position:fixed;inset:0;z-index:50;background:rgba(25,18,35,.55);display:none;overflow-y:auto;
+  padding:calc(14px + env(safe-area-inset-top)) 10px calc(30px + env(safe-area-inset-bottom))}
+.sheetwrap.open{display:block}
+.sheet{max-width:640px;margin:0 auto;background:var(--paper);box-shadow:0 10px 40px rgba(0,0,0,.35);position:relative;
+  padding:18px 18px 22px 44px;
+  background-image:linear-gradient(90deg,transparent 30px,rgba(192,57,43,.35) 31px,transparent 32px),
+                   linear-gradient(transparent 33px,var(--line) 34px);
+  background-size:100% 100%,100% 34px}
+.sheet-h{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sheet-h h2{font-family:var(--hand);font-size:34px;margin:0;color:var(--purple);flex:1;line-height:1.1}
+.close{border:0;background:none;font-size:30px;line-height:1;padding:4px 8px;color:var(--ink2)}
+.nr{font-family:var(--sans);font-size:12px;color:var(--ink2)}
+fieldset{border:0;padding:0;margin:14px 0 0}
+legend{font-family:var(--hand);font-size:26px;color:var(--red);font-weight:700;padding:0;margin-bottom:2px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
+.row.three{grid-template-columns:1fr 1fr 1fr}
+.full{grid-column:1/-1}
+label{display:block;font-family:var(--sans);font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink2);margin-top:8px}
+.f{width:100%;border:0;border-bottom:1.5px solid rgba(43,26,74,.35);background:transparent;padding:4px 2px 3px;font-family:var(--pen);font-size:19px;border-radius:0;min-height:34px}
+.f:focus{outline:none;border-bottom-color:var(--red);background:rgba(255,243,166,.35)}
+textarea.f{min-height:100px;resize:vertical;line-height:34px;padding-top:0;border-bottom:0;background:transparent}
+select.f{appearance:none;-webkit-appearance:none}
+.status-pick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.status-pick button{font-family:var(--sans);font-size:13px;border:1.5px solid rgba(0,0,0,.15);border-radius:16px;padding:6px 12px;background:#fff}
+.status-pick button[aria-pressed=true]{border-color:var(--purple);background:var(--purple);color:#fff;font-weight:700}
+
+.gruppe{border:1.5px dashed rgba(43,26,74,.3);border-radius:6px;padding:8px 10px 10px;margin-top:10px;background:rgba(255,255,255,.55)}
+.gruppe-h{display:flex;gap:8px;align-items:center}
+.gruppe-h input{flex:1}
+.ma{display:grid;grid-template-columns:62px 1fr 74px 74px 34px;gap:6px;align-items:end;margin-top:6px}
+.ma .helfer{font-family:var(--sans);font-size:12px;color:var(--ink2);padding-bottom:9px}
+.ma input{font-size:17px}
+.ma input[type=time]{font-size:16px;padding-left:0;padding-right:0}
+.ma input[type=time]::-webkit-calendar-picker-indicator{display:none}
+.ma .del{border:0;background:none;color:var(--red);font-size:22px;padding:0 0 4px}
+.ma-head{display:grid;grid-template-columns:62px 1fr 74px 74px 34px;gap:6px;font-family:var(--sans);font-size:10px;color:var(--ink2);text-transform:uppercase;margin-top:6px}
+.sum{font-family:var(--sans);font-size:13px;margin-top:8px;color:var(--purple);font-weight:700}
+.linkbtn{border:0;background:none;color:var(--purple);font-family:var(--sans);font-size:13px;font-weight:700;padding:8px 0;text-decoration:underline}
+.sheet-foot{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:12px 18px;font-family:var(--sans);font-weight:700;font-size:15px}
+.btn.primary{background:var(--purple);color:#fff;flex:1}
+.btn.ghost{background:transparent;color:var(--red);border:1.5px solid rgba(192,57,43,.4)}
+.hint{font-family:var(--sans);font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.45}
+.namewarn{font-family:var(--sans);font-size:13px;background:#fff1ef;color:var(--red);border-left:3px solid var(--red);padding:8px 10px;margin-top:10px}
+
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;
+  background:var(--ink);color:#fff;font-family:var(--sans);font-size:14px;padding:10px 16px;border-radius:10px;z-index:80;transition:.25s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:520px){
+  .board{grid-template-columns:1fr 1fr;gap:20px 12px}
+  .zettel{min-height:160px;padding:22px 12px 14px}
+  .z-kunde{font-size:17px}.z-date{font-size:22px}.z-ort{font-size:14px}
+  .sheet{padding-left:38px;padding-right:12px}
+  .ma,.ma-head{grid-template-columns:46px 1fr 70px 70px 22px;gap:4px}
+  .ma .helfer{font-size:11px}
+  .row.three{grid-template-columns:1fr 1fr}
+}
+@media (max-width:360px){.board{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="brand">Nitro Zettel<small>AUFTRÄGE</small></div>
+    <div class="spacer"></div>
+    <button class="sync" id="syncBtn" title="Jetzt synchronisieren"><span class="dot off" id="syncDot"></span><span id="syncTxt">Nicht verbunden</span></button>
+    <button class="iconbtn" id="setBtn" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+  <div class="tools">
+    <div class="tabs" role="group" aria-label="Filter" id="tabs"></div>
+    <input class="search" id="q" type="search" placeholder="Suchen: Kunde, Ort, Name…" aria-label="Suchen">
+  </div>
+</header>
+
+<main><div class="board" id="board"></div></main>
+
+<button class="fab" id="newBtn" aria-label="Neuer Zettel">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Zettel
+</button>
+
+<!-- Auftrag -->
+<div class="sheetwrap" id="edWrap" role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <form class="sheet" id="ed" autocomplete="off">
+    <div class="sheet-h"><h2 id="edTitle">Neuer Auftrag</h2><button type="button" class="close" data-close aria-label="Schließen">×</button></div>
+    <div class="nr" id="edNr"></div>
+
+    <fieldset><legend>Status</legend>
+      <div class="status-pick" id="statusPick"></div>
+    </fieldset>
+
+    <fieldset><legend>Wann</legend>
+      <div class="row three">
+        <div><label for="f_datum">Datum</label><input class="f" id="f_datum" type="date"></div>
+        <div><label for="f_beginn">Beginn</label><input class="f" id="f_beginn" type="time"></div>
+        <div><label for="f_mann">Anzahl Mann</label><input class="f" id="f_mann" type="number" min="1" inputmode="numeric"></div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Für wen</legend>
+      <div class="row">
+        <div class="full"><label for="f_kunde">Kunde / Auftraggeber</label><input class="f" id="f_kunde" placeholder="z. B. Umzüge Klein"></div>
+        <div><label for="f_ansprech">Ansprechpartner</label><input class="f" id="f_ansprech"></div>
+        <div><label for="f_tel">Telefon</label><input class="f" id="f_tel" type="tel" inputmode="tel"></div>
+        <div class="full"><label for="f_adresse">Rechnungsanschrift</label><input class="f" id="f_adresse" placeholder="Straße Nr, PLZ Ort"></div>
+        <div class="full"><label for="f_ort">Einsatzort</label><input class="f" id="f_ort" placeholder="Wo wird gearbeitet?"></div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Konditionen</legend>
+      <div class="row three">
+        <div><label for="f_satz">€ / Std. pro Mann</label><input class="f" id="f_satz" type="number" step="0.5" inputmode="decimal"></div>
+        <div><label for="f_fzg">Fahrzeuge</label><input class="f" id="f_fzg" type="number" min="0" inputmode="numeric"></div>
+        <div><label for="f_anfahrt">Anfahrt € / Fzg.</label><input class="f" id="f_anfahrt" type="number" step="1" inputmode="decimal"></div>
+      </div>
+    </fieldset>
+
+    <fieldset><legend>Wer war dabei</legend>
+      <div class="hint">Auf Rechnung und Arbeitsschein stehen nur „Helfer 1, 2 …“. Hier trägst du ein, wer das wirklich war.</div>
+      <div id="gruppen"></div>
+      <button type="button" class="linkbtn" id="addGruppe">+ Gruppe / Tour</button>
+      <div id="nameWarn"></div>
+    </fieldset>
+
+    <fieldset><legend>Abrechnung</legend>
+      <div class="row">
+        <div><label for="f_re">Rechnungs-Nr.</label><input class="f" id="f_re" placeholder="RE2026-0xx"></div>
+        <div><label for="f_redatum">Rechnungsdatum</label><input class="f" id="f_redatum" placeholder="TT.MM.JJJJ"></div>
+      </div>
+      <div class="hint" id="reHint"></div>
+    </fieldset>
+
+    <fieldset><legend>Notizen</legend>
+      <textarea class="f" id="f_notiz" rows="4" placeholder="Was war besonders? Etage, Schlüssel, Absprachen…"></textarea>
+    </fieldset>
+
+    <div class="sheet-foot">
+      <button type="submit" class="btn primary">Speichern</button>
+      <button type="button" class="btn ghost" id="delBtn">Wegwerfen</button>
+    </div>
+  </form>
+</div>
+
+<!-- Einstellungen -->
+<div class="sheetwrap" id="setWrap" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <form class="sheet" id="setForm" autocomplete="off">
+    <div class="sheet-h"><h2 id="setTitle">Verbindung zu GitHub</h2><button type="button" class="close" data-close aria-label="Schließen">×</button></div>
+    <div class="hint">Deine Zettel liegen in einem privaten GitHub-Repo. Der Schlüssel wird nur auf diesem Gerät gespeichert.</div>
+    <fieldset><legend>Repo</legend>
+      <div class="row">
+        <div><label for="s_owner">GitHub-Name</label><input class="f" id="s_owner" autocapitalize="off" spellcheck="false"></div>
+        <div><label for="s_repo">Daten-Repo</label><input class="f" id="s_repo" autocapitalize="off" spellcheck="false"></div>
+        <div class="full"><label for="s_token">Zugangsschlüssel (Token)</label><input class="f" id="s_token" type="password" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+      </div>
+      <div class="hint">Token anlegen: GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Nur das Daten-Repo auswählen, Berechtigung „Contents: Read and write“, Ablauf 1 Jahr.</div>
+    </fieldset>
+    <div class="sheet-foot">
+      <button type="submit" class="btn primary">Verbinden &amp; laden</button>
+      <button type="button" class="btn ghost" id="logoutBtn">Schlüssel löschen</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+"use strict";
+const DATA_PATH = "data/auftraege.json";
+const LS = { cfg:"nz_cfg", cache:"nz_cache", dirty:"nz_dirty" };
+const STATUS = [
+  ["entwurf","Entwurf"],["offen","Offen"],["erledigt","Erledigt"],["abgerechnet","Abgerechnet"]
+];
+const DEF = { satz:25, anfahrt:30, fzg:1 };
+const WT = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const MON = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem(k); }catch{} }
+};
+
+let cfg = ls.get(LS.cfg, { owner:"Derg83", repo:"nitro-zettel-daten", token:"" });
+let db = ls.get(LS.cache, { version:1, auftraege:[] });
+let dirty = ls.get(LS.dirty, false);
+let remoteSha = null;
+let filter = "aktiv";
+let editing = null;
+
+/* ---------- Hilfen ---------- */
+const now = () => new Date().toISOString();
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const mins = (a,b) => { if(!a||!b) return 0; const [h1,m1]=a.split(":").map(Number), [h2,m2]=b.split(":").map(Number); let d=(h2*60+m2)-(h1*60+m1); if(d<0) d+=1440; return d; };
+const hm = m => `${Math.floor(m/60)}:${String(m%60).padStart(2,"0")} h`;
+const num = x => x.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const live = () => db.auftraege.filter(a => !a.geloescht);
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2600); }
+function nextNr(){
+  const y = new Date().getFullYear(); let max = 0;
+  db.auftraege.forEach(a => { const m = /^Z-(\d{4})-(\d+)$/.exec(a.nr||""); if(m && +m[1]===y) max = Math.max(max, +m[2]); });
+  return `Z-${y}-${String(max+1).padStart(3,"0")}`;
+}
+function fehlendeNamen(a){
+  let n = 0; (a.gruppen||[]).forEach(g => (g.mitarbeiter||[]).forEach(m => { if(!m.echtname) n++; })); return n;
+}
+function stunden(a){
+  let t = 0; (a.gruppen||[]).forEach(g => (g.mitarbeiter||[]).forEach(m => { t += Math.max(0, mins(m.beginn,m.ende) - (+m.pause_min||0)); })); return t;
+}
+
+/* ---------- GitHub ---------- */
+const b64enc = s => { const bytes = new TextEncoder().encode(s); let bin=""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin); };
+const b64dec = s => { const bin = atob(s.replace(/\n/g,"")); const bytes = Uint8Array.from(bin, c => c.charCodeAt(0)); return new TextDecoder().decode(bytes); };
+async function gh(method, body){
+  const url = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${DATA_PATH}`;
+  const r = await fetch(method==="GET" ? url + "?t=" + Date.now() : url, {
+    method, cache:"no-store",
+    headers:{ "Authorization":"Bearer "+cfg.token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28",
+              ...(body ? {"Content-Type":"application/json"} : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return r;
+}
+function merge(local, remote){
+  const map = new Map();
+  (remote.auftraege||[]).forEach(a => map.set(a.id, a));
+  (local.auftraege||[]).forEach(a => {
+    const r = map.get(a.id);
+    if(!r || (a.geaendert||"") > (r.geaendert||"")) map.set(a.id, a);
+  });
+  return { version:1, auftraege:[...map.values()] };
+}
+function setSync(state, txt){ $("#syncDot").className = "dot " + state; $("#syncTxt").textContent = txt; }
+
+let syncing = false, again = false;
+async function sync(){
+  if(!cfg.token){ setSync("off","Nicht verbunden"); return; }
+  if(syncing){ again = true; return; }
+  syncing = true; setSync("busy","Synchronisiere…");
+  try{
+    for(let attempt=0; attempt<3; attempt++){
+      const r = await gh("GET");
+      let remote = { version:1, auftraege:[] };
+      if(r.status === 200){ const j = await r.json(); remoteSha = j.sha; remote = JSON.parse(b64dec(j.content)); }
+      else if(r.status === 404){ remoteSha = null; }
+      else if(r.status === 401 || r.status === 403){ throw new Error("Schlüssel ungültig oder ohne Rechte"); }
+      else throw new Error("GitHub antwortet " + r.status);
+
+      const merged = merge(db, remote);
+      db = merged; ls.set(LS.cache, db); render();
+      const same = JSON.stringify(sortDb(remote)) === JSON.stringify(sortDb(merged));
+      if(!dirty && same){ break; }
+      if(same){ dirty = false; ls.set(LS.dirty,false); break; }
+
+      const put = await gh("PUT", {
+        message: "Zettel aktualisiert (App)",
+        content: b64enc(JSON.stringify(sortDb(merged), null, 2) + "\n"),
+        ...(remoteSha ? { sha: remoteSha } : {})
+      });
+      if(put.status === 200 || put.status === 201){ const j = await put.json(); remoteSha = j.content.sha; dirty = false; ls.set(LS.dirty,false); break; }
+      if(put.status === 409 || put.status === 422) continue;   // jemand anderes hat gespeichert -> neu laden und mergen
+      throw new Error("Speichern fehlgeschlagen (" + put.status + ")");
+    }
+    const t = new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+    setSync(dirty ? "err" : "ok", dirty ? "Nicht gespeichert" : "Synchron " + t);
+  }catch(e){
+    setSync(navigator.onLine ? "err" : "off", navigator.onLine ? "Fehler" : "Offline");
+    if(navigator.onLine) toast(e.message || "Sync-Fehler");
+  }finally{
+    syncing = false;
+    if(again){ again = false; sync(); }
+  }
+}
+function sortDb(d){ return { version:1, auftraege:[...(d.auftraege||[])].sort((a,b)=>(a.id>b.id?1:-1)) }; }
+let saveT; function scheduleSync(){ dirty = true; ls.set(LS.dirty,true); ls.set(LS.cache, db); setSync("busy","Wird gespeichert…"); clearTimeout(saveT); saveT = setTimeout(sync, 600); }
+
+/* ---------- Pinnwand ---------- */
+function counts(){
+  const l = live(); const c = { aktiv:0, namen:0, alle:l.length };
+  STATUS.forEach(([k]) => c[k] = 0);
+  l.forEach(a => { c[a.status||"offen"]++; if(a.status!=="abgerechnet") c.aktiv++; if(fehlendeNamen(a)) c.namen++; });
+  return c;
+}
+function renderTabs(){
+  const c = counts();
+  const tabs = [["aktiv","Aktuell"],["offen","Offen"],["erledigt","Erledigt"],["abgerechnet","Abgerechnet"],["namen","Namen fehlen"],["alle","Alle"]];
+  $("#tabs").innerHTML = tabs.map(([k,t]) => `<button class="tab" data-f="${k}" aria-pressed="${filter===k}">${t}<b>${c[k]||0}</b></button>`).join("");
+}
+function render(){
+  renderTabs();
+  const q = $("#q").value.trim().toLowerCase();
+  let l = live().filter(a => {
+    if(filter==="aktiv" && a.status==="abgerechnet") return false;
+    if(["offen","erledigt","abgerechnet","entwurf"].includes(filter) && (a.status||"offen")!==filter) return false;
+    if(filter==="namen" && !fehlendeNamen(a)) return false;
+    if(!q) return true;
+    const hay = [a.kunde,a.ort,a.adresse,a.ansprechpartner,a.notiz,a.re_nr,a.nr,
+      ...(a.gruppen||[]).flatMap(g=>(g.mitarbeiter||[]).map(m=>m.echtname))].join(" ").toLowerCase();
+    return hay.includes(q);
+  });
+  l.sort((a,b) => (b.datum||"").localeCompare(a.datum||"") || (b.erstellt||"").localeCompare(a.erstellt||""));
+  const board = $("#board");
+  if(!l.length){
+    board.innerHTML = `<div class="empty">${live().length ? "Hier ist nichts." : "Noch kein Zettel.<br>Unten rechts geht’s los ✍︎"}</div>`;
+    return;
+  }
+  let html = "", lastM = "";
+  l.forEach((a, i) => {
+    const d = a.datum ? new Date(a.datum+"T12:00") : null;
+    const m = d ? `${MON[d.getMonth()]} ${d.getFullYear()}` : "Ohne Datum";
+    if(m !== lastM){ html += `<div class="monthhead">${m}</div>`; lastM = m; }
+    const rot = ((a.id.charCodeAt(0)+a.id.charCodeAt(a.id.length-1)+i)%7 - 3) * 0.6;
+    const fehl = fehlendeNamen(a); const st = stunden(a);
+    const mann = a.mann || (a.gruppen||[]).reduce((s,g)=>s+(g.mitarbeiter||[]).length,0);
+    const namen = (a.gruppen||[]).flatMap(g=>(g.mitarbeiter||[]).map(x=>x.echtname).filter(Boolean));
+    html += `<button class="zettel ${a.status||"offen"}" style="--rot:${rot}deg" data-id="${esc(a.id)}">
+      <div class="z-date">${d ? `${WT[d.getDay()]}, ${d.getDate()}.${d.getMonth()+1}.` : "—"} ${a.beginn ? `<span>${esc(a.beginn)} Uhr</span>` : ""}</div>
+      <div class="z-kunde">${esc(a.kunde) || "<i>Kunde fehlt</i>"}</div>
+      <div class="z-ort">${esc(a.ort || a.adresse || "")}</div>
+      ${namen.length ? `<div class="z-ort" style="margin-top:4px">👷 ${esc(namen.join(", "))}</div>` : ""}
+      <div class="z-meta">
+        ${mann ? `<span class="chip">${mann} Mann</span>` : ""}
+        ${st ? `<span class="chip">${num(st/60)} Std.</span>` : ""}
+        ${a.re_nr ? `<span class="chip re">${esc(a.re_nr)}</span>` : ""}
+        ${fehl ? `<span class="chip warn">${fehl} Name${fehl>1?"n":""} fehlt</span>` : ""}
+      </div>
+      ${a.status==="abgerechnet" ? `<div class="stamp green">ABGERECHNET</div>` : (a.status==="erledigt" && !a.re_nr ? `<div class="stamp">RECHNUNG FEHLT</div>` : "")}
+    </button>`;
+  });
+  board.innerHTML = html;
+}
+
+/* ---------- Editor ---------- */
+function blank(){
+  return { id:uid(), nr:nextNr(), status:"offen", quelle:"app", datum:new Date().toISOString().slice(0,10), beginn:"07:30", mann:2,
+    kunde:"", ansprechpartner:"", telefon:"", adresse:"", ort:"", satz:DEF.satz, fahrzeuge:DEF.fzg, anfahrt:DEF.anfahrt,
+    gruppen:[{ name:"Gruppe 1", mitarbeiter:[{helfer:"Helfer 1",echtname:"",beginn:"07:30",ende:""},{helfer:"Helfer 2",echtname:"",beginn:"07:30",ende:""}] }],
+    re_nr:"", as_nr:"", re_datum:"", notiz:"", erstellt:now(), geaendert:now() };
+}
+const F = { datum:"f_datum", beginn:"f_beginn", mann:"f_mann", kunde:"f_kunde", ansprechpartner:"f_ansprech", telefon:"f_tel",
+            adresse:"f_adresse", ort:"f_ort", satz:"f_satz", fahrzeuge:"f_fzg", anfahrt:"f_anfahrt", re_nr:"f_re", re_datum:"f_redatum", notiz:"f_notiz" };
+const NUMF = ["mann","satz","fahrzeuge","anfahrt"];
+
+function openEd(a, isNew){
+  editing = JSON.parse(JSON.stringify(a)); editing._new = !!isNew;
+  $("#edTitle").textContent = isNew ? "Neuer Auftrag" : (a.kunde || "Auftrag");
+  $("#edNr").textContent = `${a.nr || ""}${a.quelle==="claude" ? " · angelegt aus Rechnung/Arbeitsschein" : ""}`;
+  Object.entries(F).forEach(([k,id]) => { $("#"+id).value = a[k] ?? ""; });
+  $("#delBtn").style.display = isNew ? "none" : "";
+  $("#reHint").textContent = a.re_nr ? `Arbeitsschein ${a.as_nr || a.re_nr.replace("RE","AS")} gehört dazu.` : "Wird von Claude eingetragen, sobald Rechnung + Arbeitsschein erstellt sind.";
+  renderStatus(); renderGruppen();
+  $("#edWrap").classList.add("open"); document.body.style.overflow="hidden";
+  setTimeout(() => (isNew ? $("#f_kunde") : $("#edTitle")).focus?.(), 50);
+}
+function closeAll(){ document.querySelectorAll(".sheetwrap").forEach(w => w.classList.remove("open")); document.body.style.overflow=""; editing = null; }
+function renderStatus(){
+  $("#statusPick").innerHTML = STATUS.map(([k,t]) => `<button type="button" data-s="${k}" aria-pressed="${(editing.status||"offen")===k}">${t}</button>`).join("");
+}
+function readFields(){
+  Object.entries(F).forEach(([k,id]) => { const v = $("#"+id).value; editing[k] = NUMF.includes(k) ? (v===""? "" : +v) : v.trim(); });
+}
+function renderGruppen(){
+  const box = $("#gruppen");
+  box.innerHTML = (editing.gruppen||[]).map((g,gi) => {
+    return `<div class="gruppe" data-g="${gi}">
+      <div class="gruppe-h"><input class="f" data-k="gname" value="${esc(g.name)}" aria-label="Name der Gruppe">
+        ${editing.gruppen.length>1 ? `<button type="button" class="linkbtn" data-act="delg" style="color:var(--red)">entfernen</button>` : ""}</div>
+      <div class="ma-head"><span></span><span>Wer</span><span>Von</span><span>Bis</span><span></span></div>
+      ${(g.mitarbeiter||[]).map((m,mi) => `<div class="ma" data-m="${mi}">
+        <span class="helfer">${esc(m.helfer)}</span>
+        <input class="f" data-k="echtname" value="${esc(m.echtname)}" placeholder="Name" aria-label="${esc(m.helfer)} – echter Name" list="namensliste">
+        <input class="f" data-k="beginn" type="time" value="${esc(m.beginn)}" aria-label="${esc(m.helfer)} Beginn">
+        <input class="f" data-k="ende" type="time" value="${esc(m.ende)}" aria-label="${esc(m.helfer)} Ende">
+        <button type="button" class="del" data-act="delm" aria-label="${esc(m.helfer)} entfernen">×</button>
+      </div>`).join("")}
+      <button type="button" class="linkbtn" data-act="addm">+ Mitarbeiter</button>
+      <div class="sum">${sumTxt(g)}</div>
+    </div>`;
+  }).join("") + namensliste();
+  const f = fehlendeNamen(editing);
+  $("#nameWarn").innerHTML = f ? `<div class="namewarn">Bei ${f} Helfer${f>1?"n":""} fehlt noch der echte Name.</div>` : "";
+}
+function sumTxt(g){
+  const sum = (g.mitarbeiter||[]).reduce((s,m)=>s+Math.max(0,mins(m.beginn,m.ende)-(+m.pause_min||0)),0);
+  return sum ? `Summe: ${hm(sum)} = ${num(sum/60)} Std.` : "";
+}
+function updateSums(){ document.querySelectorAll("#gruppen .gruppe").forEach(el => { el.querySelector(".sum").textContent = sumTxt(editing.gruppen[+el.dataset.g]); }); }
+function namensliste(){
+  const s = new Set(); live().forEach(a => (a.gruppen||[]).forEach(g => (g.mitarbeiter||[]).forEach(m => m.echtname && s.add(m.echtname))));
+  ["Aschraf","Prince"].forEach(n => s.add(n));
+  return `<datalist id="namensliste">${[...s].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>`;
+}
+function renumber(){
+  let n = 0; editing.gruppen.forEach(g => g.mitarbeiter.forEach(m => { n++; m.helfer = "Helfer " + n; }));
+}
+
+/* ---------- Events ---------- */
+$("#board").addEventListener("click", e => {
+  const z = e.target.closest(".zettel"); if(!z) return;
+  const a = db.auftraege.find(x => x.id === z.dataset.id); if(a) openEd(a, false);
+});
+$("#tabs").addEventListener("click", e => { const b = e.target.closest(".tab"); if(!b) return; filter = b.dataset.f; render(); });
+$("#q").addEventListener("input", render);
+$("#newBtn").addEventListener("click", () => openEd(blank(), true));
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", closeAll));
+document.querySelectorAll(".sheetwrap").forEach(w => w.addEventListener("click", e => { if(e.target === w) closeAll(); }));
+document.addEventListener("keydown", e => { if(e.key === "Escape") closeAll(); });
+
+$("#statusPick").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if(!b) return; editing.status = b.dataset.s; renderStatus(); });
+
+$("#gruppen").addEventListener("input", e => {
+  const inp = e.target; const g = inp.closest("[data-g]"); if(!g) return;
+  const gi = +g.dataset.g, k = inp.dataset.k;
+  if(k === "gname"){ editing.gruppen[gi].name = inp.value; return; }
+  const mi = +inp.closest("[data-m]").dataset.m;
+  editing.gruppen[gi].mitarbeiter[mi][k] = inp.value.trim();
+  if(k !== "echtname"){ updateSums(); return; }
+  { const f = fehlendeNamen(editing); $("#nameWarn").innerHTML = f ? `<div class="namewarn">Bei ${f} Helfer${f>1?"n":""} fehlt noch der echte Name.</div>` : ""; }
+});
+$("#gruppen").addEventListener("change", e => { if(e.target.type === "time") updateSums(); });
+$("#gruppen").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if(!b) return;
+  const gi = +b.closest("[data-g]").dataset.g; const g = editing.gruppen[gi];
+  if(b.dataset.act === "addm"){ const last = g.mitarbeiter[g.mitarbeiter.length-1] || {}; g.mitarbeiter.push({helfer:"",echtname:"",beginn:last.beginn||$("#f_beginn").value||"",ende:last.ende||""}); }
+  if(b.dataset.act === "delm"){ g.mitarbeiter.splice(+b.closest("[data-m]").dataset.m, 1); }
+  if(b.dataset.act === "delg"){ editing.gruppen.splice(gi, 1); }
+  renumber(); renderGruppen();
+});
+$("#addGruppe").addEventListener("click", () => {
+  const n = editing.gruppen.length + 1; const b = $("#f_beginn").value || "";
+  editing.gruppen.push({ name:"Gruppe "+n, mitarbeiter:[{helfer:"",echtname:"",beginn:b,ende:""}] }); renumber(); renderGruppen();
+});
+$("#f_mann").addEventListener("change", () => {
+  const want = +$("#f_mann").value; if(!want || !editing) return;
+  const have = editing.gruppen.reduce((s,g)=>s+g.mitarbeiter.length,0);
+  if(want > have){ const g = editing.gruppen[editing.gruppen.length-1]; for(let i=have;i<want;i++) g.mitarbeiter.push({helfer:"",echtname:"",beginn:$("#f_beginn").value||"",ende:""}); renumber(); renderGruppen(); }
+});
+$("#f_beginn").addEventListener("change", () => {
+  const b = $("#f_beginn").value; editing.gruppen.forEach(g => g.mitarbeiter.forEach(m => { if(!m.beginn) m.beginn = b; })); renderGruppen();
+});
+
+$("#ed").addEventListener("submit", e => {
+  e.preventDefault(); readFields();
+  if(!editing.kunde && !editing.notiz){ toast("Schreib wenigstens den Kunden drauf."); $("#f_kunde").focus(); return; }
+  const isNew = editing._new; delete editing._new;
+  if(editing.status === "entwurf" && editing.kunde && editing.datum) editing.status = "offen";
+  editing.geaendert = now();
+  const i = db.auftraege.findIndex(x => x.id === editing.id);
+  if(i >= 0) db.auftraege[i] = editing; else db.auftraege.push(editing);
+  closeAll(); render(); scheduleSync(); toast(isNew ? "Zettel angepinnt" : "Gespeichert");
+});
+$("#delBtn").addEventListener("click", () => {
+  if(!editing || !confirm("Diesen Zettel wirklich wegwerfen?")) return;
+  const a = db.auftraege.find(x => x.id === editing.id);
+  if(a){ a.geloescht = true; a.geaendert = now(); }
+  closeAll(); render(); scheduleSync(); toast("Weggeworfen");
+});
+
+/* Einstellungen */
+function openSet(){
+  $("#s_owner").value = cfg.owner || ""; $("#s_repo").value = cfg.repo || ""; $("#s_token").value = cfg.token || "";
+  $("#setWrap").classList.add("open"); document.body.style.overflow="hidden";
+}
+$("#setBtn").addEventListener("click", openSet);
+$("#setForm").addEventListener("submit", e => {
+  e.preventDefault();
+  cfg = { owner:$("#s_owner").value.trim(), repo:$("#s_repo").value.trim(), token:$("#s_token").value.trim() };
+  ls.set(LS.cfg, cfg); closeAll(); sync();
+});
+$("#logoutBtn").addEventListener("click", () => { cfg.token = ""; ls.set(LS.cfg, cfg); $("#s_token").value = ""; setSync("off","Nicht verbunden"); toast("Schlüssel gelöscht"); });
+$("#syncBtn").addEventListener("click", () => cfg.token ? sync() : openSet());
+
+window.addEventListener("online", sync);
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") sync(); });
+
+if("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+render();
+if(cfg.token) sync(); else { setSync("off","Nicht verbunden"); if(!live().length) setTimeout(openSet, 400); }
+})();
+</script>
+</body>
+</html>
