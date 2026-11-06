@@ -113,6 +113,12 @@ main{max-width:980px;margin:0 auto;padding:22px 16px}
 .sheet-h h2{font-family:var(--hand);font-size:34px;margin:0;color:var(--purple);flex:1;line-height:1.1}
 .close{border:0;background:none;font-size:30px;line-height:1;padding:4px 8px;color:var(--ink2)}
 .nr{font-family:var(--sans);font-size:12px;color:var(--ink2)}
+.total{margin:10px 0 4px;padding:12px 14px;background:var(--purple);color:#fff;border-radius:6px;font-family:var(--sans);box-shadow:0 3px 10px rgba(43,26,74,.3)}
+.total.ok{background:var(--ok)}
+.total small{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.8}
+.total b{display:block;font-size:34px;line-height:1.1;font-variant-numeric:tabular-nums}
+.total .zeilen{font-size:13px;opacity:.9;margin-top:6px;line-height:1.5;font-variant-numeric:tabular-nums}
+.total .zeilen div{display:flex;justify-content:space-between;gap:10px}
 fieldset{border:0;padding:0;margin:14px 0 0}
 legend{font-family:var(--hand);font-size:26px;color:var(--red);font-weight:700;padding:0;margin-bottom:2px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
@@ -190,6 +196,7 @@ select.f{appearance:none;-webkit-appearance:none}
   <form class="sheet" id="ed" autocomplete="off">
     <div class="sheet-h"><h2 id="edTitle">Neuer Auftrag</h2><button type="button" class="close" data-close aria-label="Schließen">×</button></div>
     <div class="nr" id="edNr"></div>
+    <div class="total" id="total" aria-live="polite"></div>
 
     <fieldset><legend>Status</legend>
       <div class="status-pick" id="statusPick"></div>
@@ -568,7 +575,19 @@ $("#f_beginn").addEventListener("change", () => {
 function updateGeldHint(){
   if(!editing) return; const t = {...editing}; ["satz","fahrzeuge","anfahrt"].forEach(k => t[k] = $("#f_"+({satz:"satz",fahrzeuge:"fzg",anfahrt:"anfahrt"})[k]).value);
   const s = schaetzung(t); $("#geldHint").textContent = s ? `Aus Stunden × Satz + Anfahrt: ${eur(s)}` : "";
+  const bv = $("#f_betrag").value, betrag = bv !== "" ? +bv : s, bez = $("#f_bezahlt").checked;
+  const std = stunden(t)/60, satz = +t.satz||0, fz = +t.fahrzeuge||0, an = +t.anfahrt||0;
+  const zeilen = [];
+  if(std && satz) zeilen.push([`${num(std)} Std. × ${eur(satz)}`, eur(std*satz)]);
+  if(fz && an) zeilen.push([`${fz} × Anfahrt à ${eur(an)}`, eur(fz*an)]);
+  if(bv !== "" && Math.abs(+bv - s) > 0.009 && s) zeilen.push(["laut Rechnung", eur(+bv)]);
+  const el = $("#total"); el.className = "total" + (bez ? " ok" : "");
+  el.innerHTML = `<small>Gesamtbetrag${bez ? " · bezahlt ✓" : (editing.status==="abgerechnet" ? " · Geld noch offen" : "")}</small><b>${eur(betrag||0)}</b>`
+    + (zeilen.length ? `<div class="zeilen">${zeilen.map(([a,b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("")}</div>` : "");
 }
+$("#f_betrag").addEventListener("input", updateGeldHint);
+$("#f_bezahlt").addEventListener("change", updateGeldHint);
+$("#gruppen").addEventListener("input", updateGeldHint);
 ["f_satz","f_fzg","f_anfahrt"].forEach(id => $("#"+id).addEventListener("input", updateGeldHint));
 $("#gruppen").addEventListener("change", updateGeldHint);
 $("#calcBtn").addEventListener("click", () => { updateGeldHint(); const t = {...editing}; t.satz=$("#f_satz").value; t.fahrzeuge=$("#f_fzg").value; t.anfahrt=$("#f_anfahrt").value; $("#f_betrag").value = schaetzung(t) || ""; });
