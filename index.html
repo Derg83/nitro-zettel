@@ -77,7 +77,8 @@ main{max-width:980px;margin:0 auto;padding:22px 16px}
 .chip{background:rgba(255,255,255,.65);border-radius:12px;padding:3px 8px;border:1px solid rgba(0,0,0,.08)}
 .chip.warn{background:#fff;color:var(--red);border-color:rgba(192,57,43,.35);font-weight:700}
 .chip.re{background:var(--purple);color:#fff;border-color:transparent}
-.stamp{position:absolute;right:10px;bottom:10px;font-family:var(--sans);font-size:10px;font-weight:800;letter-spacing:1.5px;
+.zettel.has-stamp{padding-bottom:40px}
+.stamp{position:absolute;right:10px;bottom:9px;font-family:var(--sans);font-size:10px;font-weight:800;letter-spacing:1.5px;
   color:var(--red);border:2px solid var(--red);border-radius:4px;padding:2px 6px;transform:rotate(-8deg);opacity:.75}
 .stamp.green{color:var(--ok);border-color:var(--ok)}
 .empty{grid-column:1/-1;text-align:center;font-family:var(--hand);font-size:30px;color:var(--ink2);padding:50px 10px}
@@ -409,7 +410,7 @@ function render(){
     const fehl = fehlendeNamen(a); const st = stunden(a);
     const mann = a.mann || (a.gruppen||[]).reduce((s,g)=>s+(g.mitarbeiter||[]).length,0);
     const namen = (a.gruppen||[]).flatMap(g=>(g.mitarbeiter||[]).map(x=>x.echtname).filter(Boolean));
-    html += `<button class="zettel ${a.status||"offen"}" style="--rot:${rot}deg" data-id="${esc(a.id)}">
+    html += `<button class="zettel ${a.status||"offen"}${(a.status==="abgerechnet"||(a.status==="erledigt"&&!a.re_nr))?" has-stamp":""}" style="--rot:${rot}deg" data-id="${esc(a.id)}">
       <div class="z-date">${d ? `${WT[d.getDay()]}, ${d.getDate()}.${d.getMonth()+1}.` : "—"} ${a.beginn ? `<span>${esc(a.beginn)} Uhr</span>` : ""}</div>
       <div class="z-kunde">${esc(a.kunde) || "<i>Kunde fehlt</i>"}</div>
       <div class="z-ort">${esc(a.ort || a.adresse || "")}</div>
@@ -418,7 +419,7 @@ function render(){
         ${mann ? `<span class="chip">${mann} Mann</span>` : ""}
         ${st ? `<span class="chip">${num(st/60)} Std.</span>` : ""}
         ${a.re_nr ? `<span class="chip re">${esc(a.re_nr)}</span>` : ""}
-        ${fehl ? `<span class="chip warn">${fehl} Name${fehl>1?"n":""} fehlt</span>` : ""}
+        ${fehl ? `<span class="chip warn">${fehl>1 ? fehl+" Namen fehlen" : "1 Name fehlt"}</span>` : ""}
       </div>
       ${a.status==="abgerechnet" ? `<div class="stamp green">ABGERECHNET</div>` : (a.status==="erledigt" && !a.re_nr ? `<div class="stamp">RECHNUNG FEHLT</div>` : "")}
     </button>`;
