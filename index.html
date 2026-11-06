@@ -82,6 +82,17 @@ main{max-width:980px;margin:0 auto;padding:22px 16px}
   color:var(--red);border:2px solid var(--red);border-radius:4px;padding:2px 6px;transform:rotate(-8deg);opacity:.75}
 .stamp.green{color:var(--ok);border-color:var(--ok)}
 .empty{grid-column:1/-1;text-align:center;font-family:var(--hand);font-size:30px;color:var(--ink2);padding:50px 10px}
+.kasse{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-family:var(--sans)}
+.kasse div{background:var(--paper);box-shadow:var(--shadow);padding:10px 12px;border-radius:4px}
+.kasse small{display:block;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink2)}
+.kasse b{font-size:19px;font-variant-numeric:tabular-nums;color:var(--purple)}
+.kasse .offen b{color:var(--red)}.kasse .ok b{color:var(--ok)}
+.monthhead span{float:right;font-family:var(--sans);font-size:14px;font-weight:700;color:var(--ink2);padding-top:12px}
+.chip.geld{background:#fff;font-weight:700;color:var(--purple);border-color:rgba(43,26,74,.25)}
+.chip.geld.ok{color:var(--ok);border-color:rgba(47,125,79,.35)}
+.check{display:flex;align-items:center;gap:10px;font-family:var(--sans);font-size:15px;margin-top:12px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--ok)}
+@media (max-width:520px){.kasse{gap:6px}.kasse div{padding:8px}.kasse b{font-size:15px}}
 .monthhead{grid-column:1/-1;font-family:var(--hand);font-size:30px;color:var(--purple);margin:6px 0 -10px;border-bottom:2px dashed rgba(43,26,74,.25)}
 
 .fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:30;border:0;border-radius:30px;
@@ -221,7 +232,11 @@ select.f{appearance:none;-webkit-appearance:none}
       <div class="row">
         <div><label for="f_re">Rechnungs-Nr.</label><input class="f" id="f_re" placeholder="RE2026-0xx"></div>
         <div><label for="f_redatum">Rechnungsdatum</label><input class="f" id="f_redatum" placeholder="TT.MM.JJJJ"></div>
+        <div><label for="f_betrag">Betrag (€)</label><input class="f" id="f_betrag" type="number" step="0.01" inputmode="decimal" placeholder="wird berechnet"></div>
+        <div><label>&nbsp;</label><button type="button" class="linkbtn" id="calcBtn">Aus Stunden berechnen</button></div>
       </div>
+      <div class="hint" id="geldHint"></div>
+      <label class="check"><input type="checkbox" id="f_bezahlt"> Geld ist eingegangen (bezahlt)</label>
       <div class="hint" id="reHint"></div>
     </fieldset>
 
@@ -301,6 +316,12 @@ function nextNr(){
 function fehlendeNamen(a){
   let n = 0; (a.gruppen||[]).forEach(g => (g.mitarbeiter||[]).forEach(m => { if(!m.echtname) n++; })); return n;
 }
+function schaetzung(a){
+  const st = stunden(a)/60, satz = +a.satz || 0, fz = +a.fahrzeuge || 0, an = +a.anfahrt || 0;
+  return Math.round((st*satz + fz*an)*100)/100;
+}
+function geld(a){ return (a.betrag !== "" && a.betrag != null) ? +a.betrag : schaetzung(a); }
+const eur = x => x.toLocaleString("de-DE",{style:"currency",currency:"EUR"});
 function stunden(a){
   let t = 0; (a.gruppen||[]).forEach(g => (g.mitarbeiter||[]).forEach(m => { t += Math.max(0, mins(m.beginn,m.ende) - (+m.pause_min||0)); })); return t;
 }
@@ -375,12 +396,12 @@ let saveT; function scheduleSync(){ dirty = true; ls.set(LS.dirty,true); ls.set(
 function counts(){
   const l = live(); const c = { aktiv:0, namen:0, alle:l.length };
   STATUS.forEach(([k]) => c[k] = 0);
-  l.forEach(a => { c[a.status||"offen"]++; if(a.status!=="abgerechnet") c.aktiv++; if(fehlendeNamen(a)) c.namen++; });
+  l.forEach(a => { c[a.status||"offen"]++; if(a.status==="abgerechnet" && !a.bezahlt) c.geld=(c.geld||0)+1; if(a.status!=="abgerechnet") c.aktiv++; if(fehlendeNamen(a)) c.namen++; });
   return c;
 }
 function renderTabs(){
   const c = counts();
-  const tabs = [["aktiv","Aktuell"],["offen","Offen"],["erledigt","Erledigt"],["abgerechnet","Abgerechnet"],["namen","Namen fehlen"],["alle","Alle"]];
+  const tabs = [["aktiv","Aktuell"],["geld","Geld offen"],["offen","Offen"],["erledigt","Erledigt"],["abgerechnet","Abgerechnet"],["namen","Namen fehlen"],["alle","Alle"]];
   $("#tabs").innerHTML = tabs.map(([k,t]) => `<button class="tab" data-f="${k}" aria-pressed="${filter===k}">${t}<b>${c[k]||0}</b></button>`).join("");
 }
 function render(){
@@ -390,6 +411,7 @@ function render(){
     if(filter==="aktiv" && a.status==="abgerechnet") return false;
     if(["offen","erledigt","abgerechnet","entwurf"].includes(filter) && (a.status||"offen")!==filter) return false;
     if(filter==="namen" && !fehlendeNamen(a)) return false;
+    if(filter==="geld" && !(a.status==="abgerechnet" && !a.bezahlt)) return false;
     if(!q) return true;
     const hay = [a.kunde,a.ort,a.adresse,a.ansprechpartner,a.notiz,a.re_nr,a.nr,
       ...(a.gruppen||[]).flatMap(g=>(g.mitarbeiter||[]).map(m=>m.echtname))].join(" ").toLowerCase();
@@ -401,16 +423,20 @@ function render(){
     board.innerHTML = `<div class="empty">${live().length ? "Hier ist nichts." : "Noch kein Zettel.<br>Unten rechts geht’s los ✍︎"}</div>`;
     return;
   }
-  let html = "", lastM = "";
+  const sumOf = arr => arr.reduce((s,a)=>s+geld(a),0);
+  const all = live();
+  const bez = sumOf(all.filter(a=>a.bezahlt)), abg = sumOf(all.filter(a=>a.status==="abgerechnet" && !a.bezahlt)), kommt = sumOf(all.filter(a=>a.status!=="abgerechnet"));
+  let html = `<div class="kasse"><div class="ok"><small>Bezahlt</small><b>${eur(bez)}</b></div><div class="offen"><small>Noch offen</small><b>${eur(abg)}</b></div><div><small>Noch abzurechnen</small><b>${eur(kommt)}</b></div></div>`, lastM = "";
+  const monSum = {}; l.forEach(a => { const d = a.datum ? new Date(a.datum+"T12:00") : null; const k = d ? `${MON[d.getMonth()]} ${d.getFullYear()}` : "Ohne Datum"; monSum[k] = (monSum[k]||0) + geld(a); });
   l.forEach((a, i) => {
     const d = a.datum ? new Date(a.datum+"T12:00") : null;
     const m = d ? `${MON[d.getMonth()]} ${d.getFullYear()}` : "Ohne Datum";
-    if(m !== lastM){ html += `<div class="monthhead">${m}</div>`; lastM = m; }
+    if(m !== lastM){ html += `<div class="monthhead">${m}<span>${eur(monSum[m])}</span></div>`; lastM = m; }
     const rot = ((a.id.charCodeAt(0)+a.id.charCodeAt(a.id.length-1)+i)%7 - 3) * 0.6;
     const fehl = fehlendeNamen(a); const st = stunden(a);
     const mann = a.mann || (a.gruppen||[]).reduce((s,g)=>s+(g.mitarbeiter||[]).length,0);
     const namen = (a.gruppen||[]).flatMap(g=>(g.mitarbeiter||[]).map(x=>x.echtname).filter(Boolean));
-    html += `<button class="zettel ${a.status||"offen"}${(a.status==="abgerechnet"||(a.status==="erledigt"&&!a.re_nr))?" has-stamp":""}" style="--rot:${rot}deg" data-id="${esc(a.id)}">
+    html += `<button class="zettel ${a.status||"offen"}${(a.bezahlt||a.status==="abgerechnet"||(a.status==="erledigt"&&!a.re_nr))?" has-stamp":""}" style="--rot:${rot}deg" data-id="${esc(a.id)}">
       <div class="z-date">${d ? `${WT[d.getDay()]}, ${d.getDate()}.${d.getMonth()+1}.` : "—"} ${a.beginn ? `<span>${esc(a.beginn)} Uhr</span>` : ""}</div>
       <div class="z-kunde">${esc(a.kunde) || "<i>Kunde fehlt</i>"}</div>
       <div class="z-ort">${esc(a.ort || a.adresse || "")}</div>
@@ -418,10 +444,11 @@ function render(){
       <div class="z-meta">
         ${mann ? `<span class="chip">${mann} Mann</span>` : ""}
         ${st ? `<span class="chip">${num(st/60)} Std.</span>` : ""}
+        ${geld(a) ? `<span class="chip geld${a.bezahlt?" ok":""}">${eur(geld(a))}${a.bezahlt?" ✓":""}</span>` : ""}
         ${a.re_nr ? `<span class="chip re">${esc(a.re_nr)}</span>` : ""}
         ${fehl ? `<span class="chip warn">${fehl>1 ? fehl+" Namen fehlen" : "1 Name fehlt"}</span>` : ""}
       </div>
-      ${a.status==="abgerechnet" ? `<div class="stamp green">ABGERECHNET</div>` : (a.status==="erledigt" && !a.re_nr ? `<div class="stamp">RECHNUNG FEHLT</div>` : "")}
+      ${a.bezahlt ? `<div class="stamp green">BEZAHLT</div>` : a.status==="abgerechnet" ? `<div class="stamp">GELD OFFEN</div>` : (a.status==="erledigt" && !a.re_nr ? `<div class="stamp">RECHNUNG FEHLT</div>` : "")}
     </button>`;
   });
   board.innerHTML = html;
@@ -435,14 +462,15 @@ function blank(){
     re_nr:"", as_nr:"", re_datum:"", notiz:"", erstellt:now(), geaendert:now() };
 }
 const F = { datum:"f_datum", beginn:"f_beginn", mann:"f_mann", kunde:"f_kunde", ansprechpartner:"f_ansprech", telefon:"f_tel",
-            adresse:"f_adresse", ort:"f_ort", satz:"f_satz", fahrzeuge:"f_fzg", anfahrt:"f_anfahrt", re_nr:"f_re", re_datum:"f_redatum", notiz:"f_notiz" };
-const NUMF = ["mann","satz","fahrzeuge","anfahrt"];
+            adresse:"f_adresse", ort:"f_ort", satz:"f_satz", fahrzeuge:"f_fzg", anfahrt:"f_anfahrt", re_nr:"f_re", re_datum:"f_redatum", betrag:"f_betrag", notiz:"f_notiz" };
+const NUMF = ["mann","satz","fahrzeuge","anfahrt","betrag"];
 
 function openEd(a, isNew){
   editing = JSON.parse(JSON.stringify(a)); editing._new = !!isNew;
   $("#edTitle").textContent = isNew ? "Neuer Auftrag" : (a.kunde || "Auftrag");
   $("#edNr").textContent = `${a.nr || ""}${a.quelle==="claude" ? " · angelegt aus Rechnung/Arbeitsschein" : ""}`;
   Object.entries(F).forEach(([k,id]) => { $("#"+id).value = a[k] ?? ""; });
+  $("#f_bezahlt").checked = !!a.bezahlt; updateGeldHint();
   $("#delBtn").style.display = isNew ? "none" : "";
   $("#reHint").textContent = a.re_nr ? `Arbeitsschein ${a.as_nr || a.re_nr.replace("RE","AS")} gehört dazu.` : "Wird von Claude eingetragen, sobald Rechnung + Arbeitsschein erstellt sind.";
   renderStatus(); renderGruppen();
@@ -455,6 +483,7 @@ function renderStatus(){
 }
 function readFields(){
   Object.entries(F).forEach(([k,id]) => { const v = $("#"+id).value; editing[k] = NUMF.includes(k) ? (v===""? "" : +v) : v.trim(); });
+  editing.bezahlt = $("#f_bezahlt").checked;
 }
 function renderGruppen(){
   const box = $("#gruppen");
@@ -536,6 +565,13 @@ $("#f_beginn").addEventListener("change", () => {
   const b = $("#f_beginn").value; editing.gruppen.forEach(g => g.mitarbeiter.forEach(m => { if(!m.beginn) m.beginn = b; })); renderGruppen();
 });
 
+function updateGeldHint(){
+  if(!editing) return; const t = {...editing}; ["satz","fahrzeuge","anfahrt"].forEach(k => t[k] = $("#f_"+({satz:"satz",fahrzeuge:"fzg",anfahrt:"anfahrt"})[k]).value);
+  const s = schaetzung(t); $("#geldHint").textContent = s ? `Aus Stunden × Satz + Anfahrt: ${eur(s)}` : "";
+}
+["f_satz","f_fzg","f_anfahrt"].forEach(id => $("#"+id).addEventListener("input", updateGeldHint));
+$("#gruppen").addEventListener("change", updateGeldHint);
+$("#calcBtn").addEventListener("click", () => { updateGeldHint(); const t = {...editing}; t.satz=$("#f_satz").value; t.fahrzeuge=$("#f_fzg").value; t.anfahrt=$("#f_anfahrt").value; $("#f_betrag").value = schaetzung(t) || ""; });
 $("#ed").addEventListener("submit", e => {
   e.preventDefault(); readFields();
   if(!editing.kunde && !editing.notiz){ toast("Schreib wenigstens den Kunden drauf."); $("#f_kunde").focus(); return; }
